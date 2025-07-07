@@ -12,8 +12,8 @@ import (
 	"github.com/teilomillet/gollm"
 )
 
-func (gs *GameState) CollectPlayerVote(player game.Player) error {
-	prompt := gs.BasePrompt(player)
+func (gs *GameState) collectPlayerVote(player *game.Player) error {
+	prompt := gs.basePrompt(player)
 
 	var accusationStrings []string
 	for accused, byPlayer := range gs.accusedPlayers {
@@ -66,19 +66,18 @@ func (gs *GameState) CollectPlayerVote(player game.Player) error {
 	return nil
 }
 
-func (gs *GameState) DayVoting() error {
-	gs.phase = enums.PhaseDayVoting
-
-	var err error
-
+func (gs *GameState) dayVoting() (err error) {
 	var wg sync.WaitGroup
 
-	for _, player := range gs.players {
+	for i := range gs.players {
 		wg.Add(1)
-		go func(p game.Player) {
+		go func(p *game.Player) {
 			defer wg.Done()
-			err = gs.CollectPlayerVote(p)
-		}(player)
+			localErr := gs.collectPlayerVote(p)
+			if localErr != nil {
+				err = localErr
+			}
+		}(&gs.players[i])
 	}
 
 	wg.Wait()
@@ -99,18 +98,12 @@ func (gs *GameState) DayVoting() error {
 	prc := float64(maxVotes) / float64(len(gs.players))
 	if prc > 0.5 {
 		gs.Conversation.AddMessage(game.NARRATOR, fmt.Sprintf("%s has been eliminated with %d votes (%.2f%% of the total votes).", eliminatedPlayer, maxVotes, prc*100))
-		for i, p := range gs.players {
-			if p.Name == eliminatedPlayer {
-				gs.players = append(gs.players[:i], gs.players[i+1:]...)
-				break
-			}
+		if !gs.eliminatePlayer(eliminatedPlayer) {
+			return fmt.Errorf("player %s does not exist", eliminatedPlayer)
 		}
 	} else {
 		gs.Conversation.AddMessage(game.NARRATOR, fmt.Sprintf("No player has been eliminated. The highest vote count was %d (%.2f%% of the total votes), which is not enough to eliminate anyone.", maxVotes, prc*100))
 	}
-
-	gs.accusedPlayers = make(map[string]string, len(gs.players))
-	gs.votes = make(map[string]int, len(gs.players))
 
 	return nil
 }

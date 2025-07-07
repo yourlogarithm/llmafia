@@ -6,8 +6,13 @@ import (
 )
 
 func (gs *GameState) DayPhase() error {
-	for _, player := range gs.players {
-		if err := gs.DayDiscussion(player); err != nil {
+	gs.Conversation.AddMessage(
+		game.NARRATOR,
+		"The city is awake, the discussions are about to begin.",
+	)
+
+	for i := range gs.players {
+		if err := gs.dayDiscussion(&gs.players[i]); err != nil {
 			return err
 		}
 	}
@@ -22,10 +27,12 @@ func (gs *GameState) DayPhase() error {
 			game.NARRATOR,
 			"The day ends with some accusations, we will start voting, cast your vote for a single person or abstain. The player with >50% of the votes will be eliminated. If no player has more than 50% of the votes, no one will be eliminated.",
 		)
-		if err := gs.DayVoting(); err != nil {
+		if err := gs.dayVoting(); err != nil {
 			return fmt.Errorf("failed to proceed with day voting: %w", err)
 		}
 	}
+
+	gs.Clear()
 
 	return nil
 }

@@ -11,7 +11,7 @@ import (
 
 func main() {
 	names := []string{
-		"Alice", "Bob", "Charlie", "Diana", "Ethan", "Fiona", "George", "Hannah",
+		"Alice", "Bob", "Charlie", "Diana", "Ethan", "Fiona", "George",
 	}
 	// names = names[:2]
 	// rand.Shuffle(len(names), func(i, j int) {
@@ -43,9 +43,20 @@ func main() {
 	llm := llm.GetLLM()
 
 	gameState := state.NewGameState(players, llm)
+	status := enums.GameStatusOngoing
 
-	err := gameState.DayPhase()
-	if err != nil {
-		panic(err)
+	for status == enums.GameStatusOngoing {
+		if err := gameState.DayPhase(); err != nil {
+			panic(err)
+		}
+		status = gameState.EndgameStatus()
+		if status != enums.GameStatusOngoing {
+			break
+		}
+		if err := gameState.NightPhase(); err != nil {
+			panic(err)
+		}
 	}
+
+	fmt.Printf("Game ended with status: %d\n", status)
 }

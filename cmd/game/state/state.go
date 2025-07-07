@@ -8,12 +8,13 @@ import (
 )
 
 type GameState struct {
-	llm            gollm.LLM
-	players        []game.Player
-	phase          enums.Phase
-	Conversation   game.Conversation
-	accusedPlayers map[string]string // map[accused]by_player
-	votes          map[string]int    // either day elimination votes or night kill votes
+	llm              gollm.LLM
+	players          []game.Player
+	Conversation     game.Conversation
+	accusedPlayers   map[string]string // map[accused]by_player
+	votes            map[string]int    // either day elimination votes or night kill votes
+	mafiaElimination string            // Will be killed at night by mafia if not saved by doc
+	lastSaved        string
 }
 
 func NewGameState(players []game.Player, llm gollm.LLM) *GameState {
@@ -26,12 +27,12 @@ func NewGameState(players []game.Player, llm gollm.LLM) *GameState {
 	copy(state.players, players)
 	state.Conversation.AddMessage(
 		game.NARRATOR,
-		"The game has just started. The city is awake, the discussions are about to begin.",
+		"The game has just started.",
 	)
 	return &state
 }
 
-func (gs *GameState) BasePrompt(player game.Player) gollm.Prompt {
+func (gs *GameState) basePrompt(player *game.Player) gollm.Prompt {
 	prompt := gollm.Prompt{
 		Messages: []gollm.PromptMessage{
 			{
@@ -52,4 +53,36 @@ func (gs *GameState) BasePrompt(player game.Player) gollm.Prompt {
 	}
 
 	return prompt
+}
+
+func (gs *GameState) EndgameStatus() enums.GameStatus {
+	var mafiaCnt, peacefulCnt int
+	for _, player := range gs.players {
+		if player.Role == enums.RoleMafia {
+			mafiaCnt++
+		} else {
+			peacefulCnt++
+		}
+	}
+	if mafiaCnt == 0 {
+		return enums.GameStatusPeacefulWin
+	} else if mafiaCnt >= peacefulCnt {
+		return enums.GameStatusMafiaWin
+	}
+	return enums.GameStatusOngoing
+}
+
+func (gs *GameState) eliminatePlayer(name string) bool {
+	for i := 0; i < len(gs.players); i++ {
+		if gs.players[i].Name == name {
+			gs.players = append(gs.players[:i], gs.players[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+func (gs *GameState) Clear() {
+	gs.accusedPlayers = make(map[string]string, len(gs.players))
+	gs.votes = make(map[string]int, len(gs.players))
 }

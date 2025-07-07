@@ -8,7 +8,7 @@ type Player struct {
 	SystemPrompt string
 }
 
-var NARRATOR = Player{
+var NARRATOR = &Player{
 	Name: string(enums.RoleNarrator),
 	Role: enums.RoleNarrator,
 }

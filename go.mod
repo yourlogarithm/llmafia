@@ -4,7 +4,10 @@ go 1.24.0
 
 toolchain go1.24.4
 
-require github.com/teilomillet/gollm v0.1.9
+require (
+	github.com/fatih/color v1.18.0
+	github.com/teilomillet/gollm v0.1.9
+)
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
@@ -12,7 +15,6 @@ require (
 	github.com/caarlos0/env/v11 v11.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect

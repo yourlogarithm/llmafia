@@ -11,27 +11,13 @@ import (
 	"github.com/teilomillet/gollm"
 )
 
-func (gs *GameState) DayDiscussion(player game.Player) error {
-	var narratorText string
-	if gs.phase == enums.PhaseDayDiscussion {
-		narratorText = fmt.Sprintf("Now it is %s's turn to discuss.", player.Name)
-	} else {
-		gs.phase = enums.PhaseDayDiscussion
-		narratorText = fmt.Sprintf("The city is awake. %s will discuss first", player.Name)
-	}
-
-	prompt := gs.BasePrompt(player)
-
+func (gs *GameState) dayDiscussion(player *game.Player) error {
+	narratorText := fmt.Sprintf("Now it is %s's turn to discuss.", player.Name)
 	gs.Conversation.AddMessage(
 		game.NARRATOR,
 		narratorText,
 	)
-
-	prompt.Messages = append(prompt.Messages, gollm.PromptMessage{
-		Role:    "user",
-		Name:    string(enums.RoleNarrator),
-		Content: narratorText,
-	})
+	prompt := gs.basePrompt(player)
 
 	response, err := gs.llm.Generate(context.Background(), &prompt)
 	if err != nil {
@@ -50,8 +36,8 @@ func (gs *GameState) DayDiscussion(player game.Player) error {
 	return nil
 }
 
-func (gs *GameState) SolicitVote(player game.Player) error {
-	prompt := gs.BasePrompt(player)
+func (gs *GameState) SolicitVote(player *game.Player) error {
+	prompt := gs.basePrompt(player)
 
 	vote_prompt := "You may optionally accuse someone of being a mafia member. In case you do so, at the end of the day, all players will vote to eliminate the accused player. If the majority of players vote to eliminate the accused player, he or she will be eliminated. The response format must be JSON:\n{\"accuse\": \"<player_name>\", \"reason\": \"explain why you <player_name>\"}\n\nIf you do not want to accuse anyone, just leave `accuse` and `reason` empty: {\"accuse\": \"\", \"reason\": \"\"}."
 
@@ -85,12 +71,6 @@ func (gs *GameState) SolicitVote(player game.Player) error {
 				)
 			}
 		}
-	} else if player.Name == "Alice" {
-		gs.accusedPlayers["Hanna"] = player.Name
-		gs.Conversation.AddMessage(
-			player,
-			"I accuse Hanna of being a Mafia member, therefore a vote for elimination will be proposed at the end of the day. She is always suspicious.",
-		)
 	}
 
 	return nil
