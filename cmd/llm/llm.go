@@ -7,14 +7,16 @@ import (
 )
 
 func GetLLM() gollm.LLM {
+	config := ParseConfigArgs()
+
 	llm, err := gollm.NewLLM(
-		gollm.SetProvider("ollama"),
-		gollm.SetModel("gemma3n:e4b"),
-		// gollm.SetAPIKey(apiKey),
-		// gollm.SetMaxTokens(200),
+		gollm.SetProvider(config.Provider),
+		gollm.SetModel(config.Model),
+		gollm.SetAPIKey(config.APIKey),
+		gollm.SetMaxTokens(config.MaxTokens),
 		gollm.SetMaxRetries(3),
 		gollm.SetRetryDelay(time.Second*2),
-		gollm.SetLogLevel(gollm.LogLevelInfo),
+		gollm.SetLogLevel(gollm.LogLevelDebug),
 	)
 	if err != nil {
 		panic(err)

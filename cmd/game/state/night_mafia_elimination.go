@@ -37,8 +37,8 @@ func (gs *GameState) nightMafiaEliminationVote(player *game.Player) error {
 	return nil
 }
 
-func (gs *GameState) nightMultipleMafiaElimination(mafias []*game.Player, nonMafiaPlayers []string) error {
-	killMsg := fmt.Sprintf("Mafia members must vote to eliminate one of the following players: %s. The player with the most votes will be eliminated, if the votes are even, then a random player out of the proposed candidates will be eliminated. Respond with the player name and nothing else.", strings.Join(nonMafiaPlayers, ", "))
+func (gs *GameState) nightMultipleMafiaElimination(mafias []*game.Player) error {
+	killMsg := "As mafia members, you and your partner must choose a peaceful player to eliminate tonight. Reply ONLY with the exact name of the player you wish to eliminate. Do not include any extra words or explanations."
 
 	gs.Conversation.AddMessage(
 		game.NARRATOR,
@@ -63,10 +63,10 @@ func (gs *GameState) nightMultipleMafiaElimination(mafias []*game.Player, nonMaf
 	return nil
 }
 
-func (gs *GameState) nightSingleMafiaElimination(player *game.Player, nonMafiaPlayers []string) error {
+func (gs *GameState) nightSingleMafiaElimination(player *game.Player) error {
 	prompt := gs.basePrompt(player)
 
-	killMsg := fmt.Sprintf("You are the only Mafia member left. Eliminate one of the following players: %s. Respond with the player name and nothing else.", strings.Join(nonMafiaPlayers, ", "))
+	killMsg := "As a mafia member, you must choose a peaceful player to eliminate tonight. Reply ONLY with the exact name of the player you wish to eliminate. Do not include any extra words or explanations."
 
 	prompt.Messages = append(prompt.Messages, gollm.PromptMessage{
 		Role:    "user",
@@ -111,18 +111,11 @@ func (gs *GameState) nightMafiaElimination() error {
 		}
 	}
 
-	nonMafiaPlayers := make([]string, 0)
-	for i := range gs.players {
-		if gs.players[i].Role != enums.RoleMafia {
-			nonMafiaPlayers = append(nonMafiaPlayers, gs.players[i].Name)
-		}
-	}
-
 	if len(mafiaPlayers) == 0 {
 		return fmt.Errorf("no mafia players found during night elimination")
 	} else if len(mafiaPlayers) == 1 {
-		return gs.nightSingleMafiaElimination(mafiaPlayers[0], nonMafiaPlayers)
+		return gs.nightSingleMafiaElimination(mafiaPlayers[0])
 	} else {
-		return gs.nightMultipleMafiaElimination(mafiaPlayers, nonMafiaPlayers)
+		return gs.nightMultipleMafiaElimination(mafiaPlayers)
 	}
 }

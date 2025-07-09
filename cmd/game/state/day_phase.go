@@ -5,14 +5,20 @@ import (
 	"mafia/cmd/game"
 )
 
-func (gs *GameState) DayPhase() error {
+func (gs *GameState) DayPhase(firstDay bool) error {
+	var message string
+	if firstDay {
+		message = "The first day has begun. the discussion is about to start."
+	} else {
+		message = "The next day has begun. the discussion is about to start."
+	}
 	gs.Conversation.AddMessage(
 		game.NARRATOR,
-		"The city is awake, the discussions are about to begin.",
+		message,
 	)
 
 	for i := range gs.players {
-		if err := gs.dayDiscussion(&gs.players[i]); err != nil {
+		if err := gs.dayDiscussion(&gs.players[i], i == gs.Cycle); err != nil {
 			return err
 		}
 	}
@@ -25,7 +31,7 @@ func (gs *GameState) DayPhase() error {
 	} else {
 		gs.Conversation.AddMessage(
 			game.NARRATOR,
-			"The day ends with some accusations, we will start voting, cast your vote for a single person or abstain. The player with >50% of the votes will be eliminated. If no player has more than 50% of the votes, no one will be eliminated.",
+			"Accusations have been made. It's time to vote: each player may vote to eliminate one accused person or abstain. If any accused receives more than 50% of the votes, they will be eliminated. Otherwise, no one will be eliminated this day.",
 		)
 		if err := gs.dayVoting(); err != nil {
 			return fmt.Errorf("failed to proceed with day voting: %w", err)

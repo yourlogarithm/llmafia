@@ -11,8 +11,13 @@ import (
 	"github.com/teilomillet/gollm"
 )
 
-func (gs *GameState) dayDiscussion(player *game.Player) error {
-	narratorText := fmt.Sprintf("Now it is %s's turn to discuss.", player.Name)
+func (gs *GameState) dayDiscussion(player *game.Player, firstToSpeak bool) error {
+	var narratorText string
+	if firstToSpeak {
+		narratorText = fmt.Sprintf("%s is the first to speak this morning.", player.Name)
+	} else {
+		narratorText = fmt.Sprintf("Now it is %s's turn to discuss.", player.Name)
+	}
 	gs.Conversation.AddMessage(
 		game.NARRATOR,
 		narratorText,
@@ -39,12 +44,14 @@ func (gs *GameState) dayDiscussion(player *game.Player) error {
 func (gs *GameState) SolicitVote(player *game.Player) error {
 	prompt := gs.basePrompt(player)
 
-	vote_prompt := "You may optionally accuse someone of being a mafia member. In case you do so, at the end of the day, all players will vote to eliminate the accused player. If the majority of players vote to eliminate the accused player, he or she will be eliminated. The response format must be JSON:\n{\"accuse\": \"<player_name>\", \"reason\": \"explain why you <player_name>\"}\n\nIf you do not want to accuse anyone, just leave `accuse` and `reason` empty: {\"accuse\": \"\", \"reason\": \"\"}."
-
 	prompt.Messages = append(prompt.Messages, gollm.PromptMessage{
-		Role:    "user",
-		Name:    string(enums.RoleNarrator),
-		Content: vote_prompt,
+		Role: "user",
+		Name: string(enums.RoleNarrator),
+		Content: `You may optionally accuse someone of being a mafia member. In case you do so - at the end of the day all players will vote to eliminate the accused player. If the majority of players vote against the player, he/she will be eliminated. The response format must be JSON:
+{"accuse": "<player_name>", "reason": "explain why you <player_name>"}
+
+If you do not want to accuse anyone, just leave the values empty:
+{"accuse": "", "reason": ""}.`,
 	})
 
 	var accuse struct {

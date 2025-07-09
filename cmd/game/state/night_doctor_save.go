@@ -28,7 +28,7 @@ func (gs *GameState) nightDoctorSave() error {
 
 	gs.Conversation.AddMessage(
 		game.NARRATOR,
-		fmt.Sprintf("The doctor must choose someone to protect from elimination tonight.%s Choose by responding with the name of the player you want to save and nothing else.", rowMessage),
+		fmt.Sprintf("As the doctor, you must choose someone to protect from elimination tonight.%s Reply ONLY with the exact name of the player you wish to protect. Do not include any extra words or explanations.", rowMessage),
 		enums.RoleDoctor,
 	)
 

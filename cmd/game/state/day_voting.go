@@ -97,12 +97,12 @@ func (gs *GameState) dayVoting() (err error) {
 
 	prc := float64(maxVotes) / float64(len(gs.players))
 	if prc > 0.5 {
-		gs.Conversation.AddMessage(game.NARRATOR, fmt.Sprintf("%s has been eliminated with %d votes (%.2f%% of the total votes).", eliminatedPlayer, maxVotes, prc*100))
+		gs.Conversation.AddMessage(game.NARRATOR, fmt.Sprintf("%s has been eliminated with %d votes.", eliminatedPlayer, maxVotes))
 		if !gs.eliminatePlayer(eliminatedPlayer) {
 			return fmt.Errorf("player %s does not exist", eliminatedPlayer)
 		}
 	} else {
-		gs.Conversation.AddMessage(game.NARRATOR, fmt.Sprintf("No player has been eliminated. The highest vote count was %d (%.2f%% of the total votes), which is not enough to eliminate anyone.", maxVotes, prc*100))
+		gs.Conversation.AddMessage(game.NARRATOR, fmt.Sprintf("The highest vote count was %d, which is not enough to eliminate anyone, thus the day ends without any elimination.", maxVotes))
 	}
 
 	return nil

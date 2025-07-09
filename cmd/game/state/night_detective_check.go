@@ -23,7 +23,7 @@ func (gs *GameState) nightDetectiveCheck() error {
 
 	gs.Conversation.AddMessage(
 		game.NARRATOR,
-		"The detective must choose a player to investigate tonight. Respond with a player's name you want to investigate and nothing else.",
+		"As the detective, you must investigate one player tonight. Reply ONLY with the exact name of the player you wish to investigate. Do not include any extra words or explanations.",
 		enums.RoleDetective,
 	)
 	prompt := gs.basePrompt(detective)

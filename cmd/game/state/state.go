@@ -10,6 +10,7 @@ import (
 type GameState struct {
 	llm              gollm.LLM
 	players          []game.Player
+	Cycle            int
 	Conversation     game.Conversation
 	accusedPlayers   map[string]string // map[accused]by_player
 	votes            map[string]int    // either day elimination votes or night kill votes
@@ -85,4 +86,8 @@ func (gs *GameState) eliminatePlayer(name string) bool {
 func (gs *GameState) Clear() {
 	gs.accusedPlayers = make(map[string]string, len(gs.players))
 	gs.votes = make(map[string]int, len(gs.players))
+}
+
+func (gs *GameState) UpdateCycle() {
+	gs.Cycle = (gs.Cycle + 1) % len(gs.players)
 }
