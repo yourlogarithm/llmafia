@@ -3,12 +3,12 @@ package state
 import (
 	"mafia/cmd/enums"
 	"mafia/cmd/game"
-
-	"github.com/teilomillet/gollm"
+	"mafia/cmd/llm"
+	"mafia/cmd/llm/models"
 )
 
 type GameState struct {
-	llm              gollm.LLM
+	llm              llm.LLM
 	players          []game.Player
 	Cycle            int
 	Conversation     game.Conversation
@@ -18,7 +18,7 @@ type GameState struct {
 	lastSaved        string
 }
 
-func NewGameState(players []game.Player, llm gollm.LLM) *GameState {
+func NewGameState(players []game.Player, llm llm.LLM) *GameState {
 	state := GameState{
 		llm:            llm,
 		players:        make([]game.Player, len(players)),
@@ -26,34 +26,31 @@ func NewGameState(players []game.Player, llm gollm.LLM) *GameState {
 		votes:          make(map[string]int, len(players)),
 	}
 	copy(state.players, players)
-	state.Conversation.AddMessage(
+	state.Conversation.AddMessagePlaintext(
 		game.NARRATOR,
 		"The game has just started.",
 	)
 	return &state
 }
 
-func (gs *GameState) basePrompt(player *game.Player) gollm.Prompt {
-	prompt := gollm.Prompt{
-		Messages: []gollm.PromptMessage{
-			{
-				Role:    "system",
-				Content: player.SystemPrompt,
-			},
-		},
-	}
+func (gs *GameState) baseMessages(player *game.Player) (messages []models.GenerateMessage) {
+	messages = append(messages, models.GenerateMessage{
+		Role:    "user",
+		Content: player.SystemPrompt,
+	})
 
 	for _, log := range gs.Conversation.GetMessages() {
 		if log.Role == "" || log.Role == player.Role {
-			prompt.Messages = append(prompt.Messages, gollm.PromptMessage{
-				Role:    "user",
-				Name:    log.Player.Name,
-				Content: log.Message,
+			messages = append(messages, models.GenerateMessage{
+				Role:             "user",
+				Name:             log.Player.Name,
+				Content:          log.Message,
+				ReasoningContent: log.Reasoning,
 			})
 		}
 	}
 
-	return prompt
+	return messages
 }
 
 func (gs *GameState) EndgameStatus() enums.GameStatus {

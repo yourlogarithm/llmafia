@@ -26,33 +26,33 @@ func (gs *GameState) nightDoctorSave() error {
 		rowMessage = fmt.Sprintf(" Remember that you cannot save %s two times in a row.", gs.lastSaved)
 	}
 
-	gs.Conversation.AddMessage(
+	gs.Conversation.AddMessagePlaintext(
 		game.NARRATOR,
 		fmt.Sprintf("As the doctor, you must choose someone to protect from elimination tonight.%s Reply ONLY with the exact name of the player you wish to protect. Do not include any extra words or explanations.", rowMessage),
 		enums.RoleDoctor,
 	)
 
-	prompt := gs.basePrompt(doctor)
-	playerName, err := gs.llm.Generate(context.Background(), &prompt)
+	messages := gs.baseMessages(doctor)
+	response, err := gs.llm.Generate(context.Background(), messages)
 	if err != nil {
 		return fmt.Errorf("failed to generate response for doctor save: %w", err)
 	}
 
-	playerName = strings.TrimSpace(playerName)
-	if playerName == "" {
+	response.Content = strings.Trim(response.Content, " \n")
+	if response.Content == "" {
 		return fmt.Errorf("empty response received for doctor save")
 	}
 
 	gs.Conversation.AddMessage(
 		doctor,
-		playerName,
+		response,
 		enums.RoleDoctor,
 	)
 
-	gs.lastSaved = playerName
+	gs.lastSaved = response.Content
 
-	if gs.mafiaElimination == playerName {
-		gs.Conversation.AddMessage(
+	if gs.mafiaElimination == response.Content {
+		gs.Conversation.AddMessagePlaintext(
 			game.NARRATOR,
 			"Tonight's victim has been saved by the doctor.",
 		)

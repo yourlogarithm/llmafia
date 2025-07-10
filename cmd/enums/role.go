@@ -9,3 +9,7 @@ const (
 	RoleMafia     Role = "Mafia"
 	RoleNarrator  Role = "Narrator" // Narrator is the one who manages the game flow and announces phases
 )
+
+func (r Role) String() string {
+	return string(r)
+}

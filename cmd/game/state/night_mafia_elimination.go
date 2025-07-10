@@ -5,33 +5,32 @@ import (
 	"fmt"
 	"mafia/cmd/enums"
 	"mafia/cmd/game"
+	"mafia/cmd/llm/models"
 	"strings"
-
-	"github.com/teilomillet/gollm"
 )
 
 func (gs *GameState) nightMafiaEliminationVote(player *game.Player) error {
-	prompt := gs.basePrompt(player)
+	messages := gs.baseMessages(player)
 
-	playerName, err := gs.llm.Generate(context.Background(), &prompt)
+	response, err := gs.llm.Generate(context.Background(), messages)
 	if err != nil {
 		return fmt.Errorf("failed to generate response for mafia elimination vote: %w", err)
 	}
-	playerName = strings.TrimSpace(playerName)
-	if playerName == "" {
+	response.Content = strings.Trim(response.Content, " \n")
+	if response.Content == "" {
 		return fmt.Errorf("empty response received for mafia elimination vote")
 	}
 
 	gs.Conversation.AddMessage(
 		player,
-		playerName,
+		response,
 		enums.RoleMafia,
 	)
 
-	if cnt, exists := gs.votes[playerName]; exists {
-		gs.votes[playerName] = cnt + 1
+	if cnt, exists := gs.votes[response.Content]; exists {
+		gs.votes[response.Content] = cnt + 1
 	} else {
-		gs.votes[playerName] = 1
+		gs.votes[response.Content] = 1
 	}
 
 	return nil
@@ -40,7 +39,7 @@ func (gs *GameState) nightMafiaEliminationVote(player *game.Player) error {
 func (gs *GameState) nightMultipleMafiaElimination(mafias []*game.Player) error {
 	killMsg := "As mafia members, you and your partner must choose a peaceful player to eliminate tonight. Reply ONLY with the exact name of the player you wish to eliminate. Do not include any extra words or explanations."
 
-	gs.Conversation.AddMessage(
+	gs.Conversation.AddMessagePlaintext(
 		game.NARRATOR,
 		killMsg,
 		enums.RoleMafia,
@@ -64,39 +63,39 @@ func (gs *GameState) nightMultipleMafiaElimination(mafias []*game.Player) error 
 }
 
 func (gs *GameState) nightSingleMafiaElimination(player *game.Player) error {
-	prompt := gs.basePrompt(player)
+	messages := gs.baseMessages(player)
 
 	killMsg := "As a mafia member, you must choose a peaceful player to eliminate tonight. Reply ONLY with the exact name of the player you wish to eliminate. Do not include any extra words or explanations."
 
-	prompt.Messages = append(prompt.Messages, gollm.PromptMessage{
+	messages = append(messages, models.GenerateMessage{
 		Role:    "user",
 		Name:    string(enums.RoleNarrator),
 		Content: killMsg,
 	})
 
-	gs.Conversation.AddMessage(
+	gs.Conversation.AddMessagePlaintext(
 		game.NARRATOR,
 		killMsg,
 		enums.RoleMafia,
 	)
 
-	playerName, err := gs.llm.Generate(context.Background(), &prompt)
+	response, err := gs.llm.Generate(context.Background(), messages)
 	if err != nil {
 		return fmt.Errorf("failed to generate response for single mafia elimination: %w", err)
 	}
-	playerName = strings.TrimSpace(playerName)
-	if playerName == "" {
+	response.Content = strings.Trim(response.Content, " \n")
+	if response.Content == "" {
 		return fmt.Errorf("empty response received for single mafia elimination")
 	}
 
 	gs.Conversation.AddMessage(
 		player,
-		playerName,
+		response,
 		enums.RoleMafia,
 	)
 
-	if !gs.eliminatePlayer(playerName) {
-		return fmt.Errorf("player %s does not exist", playerName)
+	if !gs.eliminatePlayer(response.Content) {
+		return fmt.Errorf("player %s does not exist", response.Content)
 	}
 
 	return nil

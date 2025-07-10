@@ -6,7 +6,7 @@ import (
 )
 
 func (gs *GameState) NightPhase() error {
-	gs.Conversation.AddMessage(
+	gs.Conversation.AddMessagePlaintext(
 		game.NARRATOR,
 		"The night falls, the city is asleep, and the Mafia is about to make their move.",
 	)
@@ -30,7 +30,7 @@ func (gs *GameState) NightPhase() error {
 		if !gs.eliminatePlayer(gs.mafiaElimination) {
 			return fmt.Errorf("failed to eliminate player %s", gs.mafiaElimination)
 		}
-		gs.Conversation.AddMessage(
+		gs.Conversation.AddMessagePlaintext(
 			game.NARRATOR,
 			fmt.Sprintf("Tonight %s has been eliminated.", gs.mafiaElimination),
 		)

@@ -1,14 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"mafia/cmd/args"
 	"mafia/cmd/enums"
 	"mafia/cmd/game"
 	"mafia/cmd/game/state"
 	"mafia/cmd/llm"
-	"mafia/cmd/prompts"
 	"strings"
+	"text/template"
 )
+
+func generateSystemPrompt(tmpl *template.Template, name string, args any) string {
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, name, args); err != nil {
+		panic(err)
+	}
+	return buf.String()
+}
 
 func main() {
 	names := []string{
@@ -19,6 +29,7 @@ func main() {
 	// 	names[i], names[j] = names[j], names[i]
 	// })
 
+	tmpl := template.Must(template.ParseGlob("templates/*.tmpl"))
 	players := make([]game.Player, len(names))
 	for i, name := range names {
 		restPlayers := make([]string, 0, len(names)-1)
@@ -31,16 +42,35 @@ func main() {
 
 		if i < 2 {
 			players[i].Role = enums.RoleMafia
-			players[i].SystemPrompt = fmt.Sprintf(prompts.MAFIA, name, restPlayersStr, enums.RoleMafia, names[(i+1)%2])
+			players[i].SystemPrompt = generateSystemPrompt(tmpl, "mafia", args.MafiaTemplateArgs{
+				CommonTemplateArgs: args.CommonTemplateArgs{
+					Name:    name,
+					Role:    enums.RoleMafia.String(),
+					Players: restPlayersStr,
+				},
+				Partner: names[(i+1)%2],
+			})
 		} else if i == 2 {
 			players[i].Role = enums.RoleDoctor
-			players[i].SystemPrompt = fmt.Sprintf(prompts.DOCTOR, name, restPlayersStr, enums.RoleDoctor)
+			players[i].SystemPrompt = generateSystemPrompt(tmpl, "doctor", args.CommonTemplateArgs{
+				Name:    name,
+				Role:    enums.RoleDoctor.String(),
+				Players: restPlayersStr,
+			})
 		} else if i == 3 {
 			players[i].Role = enums.RoleDetective
-			players[i].SystemPrompt = fmt.Sprintf(prompts.DETECTIVE, name, restPlayersStr, enums.RoleDetective)
+			players[i].SystemPrompt = generateSystemPrompt(tmpl, "detective", args.CommonTemplateArgs{
+				Name:    name,
+				Role:    enums.RoleDetective.String(),
+				Players: restPlayersStr,
+			})
 		} else {
 			players[i].Role = enums.RoleCitizen
-			players[i].SystemPrompt = fmt.Sprintf(prompts.CITIZEN, name, restPlayersStr, enums.RoleCitizen)
+			players[i].SystemPrompt = generateSystemPrompt(tmpl, "citizen", args.CommonTemplateArgs{
+				Name:    name,
+				Role:    enums.RoleCitizen.String(),
+				Players: restPlayersStr,
+			})
 		}
 		players[i].Name = name
 	}
@@ -49,7 +79,7 @@ func main() {
 	// 	players[i], players[j] = players[j], players[i]
 	// })
 
-	llm := llm.GetLLM()
+	llm := llm.GetOpenaiLLM()
 
 	gameState := state.NewGameState(players, llm)
 	status := enums.GameStatusOngoing

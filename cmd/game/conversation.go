@@ -3,24 +3,38 @@ package game
 import (
 	"fmt"
 	"mafia/cmd/enums"
+	"mafia/cmd/llm/models"
+	"strings"
 
 	"github.com/fatih/color"
 )
 
 type ConversationLog struct {
-	Player  *Player
-	Message string
-	Role    enums.Role // The message may be role-specific, for example night elimination phase for Mafia
+	Player    *Player    `json:"-"`
+	Message   string     `json:"message"`
+	Role      enums.Role `json:"role"`      // The message may be role-specific, for example night elimination phase for Mafia
+	Reasoning string     `json:"reasoning"` // Optional reasoning content for the message
 }
 
 type Conversation struct {
 	conversation []ConversationLog
 }
 
-func (c *Conversation) AddMessage(player *Player, message string, role ...enums.Role) {
+func (c *Conversation) AddMessagePlaintext(player *Player, message string, role ...enums.Role) {
+	response := models.GenerateResponse{
+		Content:   message,
+		Reasoning: "",
+	}
+	c.AddMessage(player, response, role...)
+}
+
+func (c *Conversation) AddMessage(player *Player, response models.GenerateResponse, role ...enums.Role) {
+	response.Content = strings.Trim(response.Content, " \n")
+	response.Reasoning = strings.Trim(response.Reasoning, " \n")
 	c.conversation = append(c.conversation, ConversationLog{
-		Player:  player,
-		Message: message,
+		Player:    player,
+		Message:   response.Content,
+		Reasoning: response.Reasoning,
 	})
 
 	if len(role) > 0 {
@@ -29,7 +43,7 @@ func (c *Conversation) AddMessage(player *Player, message string, role ...enums.
 
 	args := []any{
 		player.Name,
-		message,
+		response.Content,
 	}
 	var format string
 	if player.Role == enums.RoleNarrator {
