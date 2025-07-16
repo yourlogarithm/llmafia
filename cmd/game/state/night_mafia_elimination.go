@@ -10,6 +10,12 @@ import (
 )
 
 func (gs *GameState) nightMafiaEliminationVote(player *game.Player) error {
+	gs.Conversation.AddMessagePlaintext(
+		game.NARRATOR,
+		fmt.Sprintf("Now it's %s's turn to cast an elimination vote.", player.Name),
+		enums.RoleMafia,
+	)
+
 	messages := gs.baseMessages(player)
 
 	response, err := gs.llm.Generate(context.Background(), messages)
@@ -36,7 +42,7 @@ func (gs *GameState) nightMafiaEliminationVote(player *game.Player) error {
 	return nil
 }
 
-func (gs *GameState) nightMultipleMafiaElimination(mafias []*game.Player) error {
+func (gs *GameState) nightMultipleMafiaElimination(mafias []*game.Player) (candidate string, err error) {
 	killMsg := "As mafia members, you and your partner must choose a peaceful player to eliminate tonight. Reply ONLY with the exact name of the player you wish to eliminate. Do not include any extra words or explanations."
 
 	gs.Conversation.AddMessagePlaintext(
@@ -47,22 +53,22 @@ func (gs *GameState) nightMultipleMafiaElimination(mafias []*game.Player) error 
 
 	for _, mafia := range mafias {
 		if err := gs.nightMafiaEliminationVote(mafia); err != nil {
-			return fmt.Errorf("failed to process mafia elimination vote for %s: %w", mafia.Name, err)
+			return "", fmt.Errorf("failed to process mafia elimination vote for %s: %w", mafia.Name, err)
 		}
 	}
 
 	var maxVotes int
-	for candidate, voteCount := range gs.votes {
+	for c, voteCount := range gs.votes {
 		if voteCount > maxVotes {
 			maxVotes = voteCount
-			gs.mafiaElimination = candidate
+			candidate = c
 		}
 	}
 
-	return nil
+	return candidate, nil
 }
 
-func (gs *GameState) nightSingleMafiaElimination(player *game.Player) error {
+func (gs *GameState) nightSingleMafiaElimination(player *game.Player) (string, error) {
 	messages := gs.baseMessages(player)
 
 	killMsg := "As a mafia member, you must choose a peaceful player to eliminate tonight. Reply ONLY with the exact name of the player you wish to eliminate. Do not include any extra words or explanations."
@@ -81,11 +87,11 @@ func (gs *GameState) nightSingleMafiaElimination(player *game.Player) error {
 
 	response, err := gs.llm.Generate(context.Background(), messages)
 	if err != nil {
-		return fmt.Errorf("failed to generate response for single mafia elimination: %w", err)
+		return "", fmt.Errorf("failed to generate response for single mafia elimination: %w", err)
 	}
 	response.Content = strings.Trim(response.Content, " \n")
 	if response.Content == "" {
-		return fmt.Errorf("empty response received for single mafia elimination")
+		return "", fmt.Errorf("empty response received for single mafia elimination")
 	}
 
 	gs.Conversation.AddMessage(
@@ -94,14 +100,10 @@ func (gs *GameState) nightSingleMafiaElimination(player *game.Player) error {
 		enums.RoleMafia,
 	)
 
-	if !gs.eliminatePlayer(response.Content) {
-		return fmt.Errorf("player %s does not exist", response.Content)
-	}
-
-	return nil
+	return response.Content, nil
 }
 
-func (gs *GameState) nightMafiaElimination() error {
+func (gs *GameState) nightMafiaElimination() (err error) {
 	var mafiaPlayers []*game.Player
 
 	for i := range gs.players {
@@ -110,11 +112,29 @@ func (gs *GameState) nightMafiaElimination() error {
 		}
 	}
 
+	var eliminate string
 	if len(mafiaPlayers) == 0 {
 		return fmt.Errorf("no mafia players found during night elimination")
 	} else if len(mafiaPlayers) == 1 {
-		return gs.nightSingleMafiaElimination(mafiaPlayers[0])
+		eliminate, err = gs.nightSingleMafiaElimination(mafiaPlayers[0])
 	} else {
-		return gs.nightMultipleMafiaElimination(mafiaPlayers)
+		eliminate, err = gs.nightMultipleMafiaElimination(mafiaPlayers)
 	}
+
+	if err != nil {
+		return fmt.Errorf("failed to process night mafia elimination: %w", err)
+	}
+
+	if eliminate == "" {
+		gs.Conversation.AddMessagePlaintext(
+			game.NARRATOR,
+			"The mafia has chosen not to eliminate anyone tonight.",
+			enums.RoleMafia,
+		)
+		return nil
+	}
+
+	gs.mafiaElimination = eliminate
+
+	return nil
 }

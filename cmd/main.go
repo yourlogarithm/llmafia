@@ -2,14 +2,18 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"mafia/cmd/args"
 	"mafia/cmd/enums"
 	"mafia/cmd/game"
 	"mafia/cmd/game/state"
 	"mafia/cmd/llm"
+	"math/rand/v2"
+	"os"
 	"strings"
 	"text/template"
+	"time"
 )
 
 func generateSystemPrompt(tmpl *template.Template, name string, args any) string {
@@ -21,13 +25,18 @@ func generateSystemPrompt(tmpl *template.Template, name string, args any) string
 }
 
 func main() {
+	out := flag.String("out", "", "Output directory for game logs")
+	flag.Parse()
+
+	now := time.Now()
+
 	names := []string{
 		"Alice", "Bob", "Charlie", "Diana", "Ethan", "Fiona", "George",
 	}
-	// names = names[:2]
-	// rand.Shuffle(len(names), func(i, j int) {
-	// 	names[i], names[j] = names[j], names[i]
-	// })
+
+	rand.Shuffle(len(names), func(i, j int) {
+		names[i], names[j] = names[j], names[i]
+	})
 
 	tmpl := template.Must(template.ParseGlob("templates/*.tmpl"))
 	players := make([]game.Player, len(names))
@@ -75,24 +84,22 @@ func main() {
 		players[i].Name = name
 	}
 
-	// rand.Shuffle(len(players), func(i, j int) {
-	// 	players[i], players[j] = players[j], players[i]
-	// })
+	rand.Shuffle(len(players), func(i, j int) {
+		players[i], players[j] = players[j], players[i]
+	})
 
 	llm := llm.GetOpenaiLLM()
 
 	gameState := state.NewGameState(players, llm)
-	status := enums.GameStatusOngoing
 
 	firstDay := true
 
-	for status == enums.GameStatusOngoing {
+	for gameState.EndgameStatus() == enums.GameStatusOngoing {
 		if err := gameState.DayPhase(firstDay); err != nil {
 			panic(err)
 		}
 		firstDay = false
-		status = gameState.EndgameStatus()
-		if status != enums.GameStatusOngoing {
+		if gameState.EndgameStatus() != enums.GameStatusOngoing {
 			break
 		}
 		if err := gameState.NightPhase(); err != nil {
@@ -101,5 +108,19 @@ func main() {
 		gameState.UpdateCycle()
 	}
 
-	fmt.Printf("Game ended with status: %d\n", status)
+	fmt.Printf("Game ended with status: %d\n", gameState.EndgameStatus())
+
+	if out != nil && *out != "" {
+		file, err := os.OpenFile(*out, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			fmt.Printf("Error opening file: %v\n", err)
+			return
+		}
+		defer file.Close()
+
+		if err := gameState.Dump(now, players, file); err != nil {
+			fmt.Printf("Error dumping game state: %v\n", err)
+			return
+		}
+	}
 }

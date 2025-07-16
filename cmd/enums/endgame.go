@@ -3,7 +3,7 @@ package enums
 type GameStatus int
 
 const (
-	GameStatusMafiaWin GameStatus = iota
+	GameStatusOngoing GameStatus = iota
+	GameStatusMafiaWin
 	GameStatusPeacefulWin
-	GameStatusOngoing
 )

@@ -1,21 +1,24 @@
 package state
 
 import (
+	"encoding/json"
 	"mafia/cmd/enums"
 	"mafia/cmd/game"
 	"mafia/cmd/llm"
 	"mafia/cmd/llm/models"
+	"os"
+	"time"
 )
 
 type GameState struct {
 	llm              llm.LLM
 	players          []game.Player
-	Cycle            int
-	Conversation     game.Conversation
+	cycle            int
 	accusedPlayers   map[string]string // map[accused]by_player
 	votes            map[string]int    // either day elimination votes or night kill votes
 	mafiaElimination string            // Will be killed at night by mafia if not saved by doc
 	lastSaved        string
+	Conversation     game.Conversation
 }
 
 func NewGameState(players []game.Player, llm llm.LLM) *GameState {
@@ -86,5 +89,27 @@ func (gs *GameState) Clear() {
 }
 
 func (gs *GameState) UpdateCycle() {
-	gs.Cycle = (gs.Cycle + 1) % len(gs.players)
+	gs.cycle++
+}
+
+func (gs *GameState) Dump(t time.Time, players []game.Player, f *os.File) error {
+	var conversation []ConversationLogPlayerName
+	for _, msg := range gs.Conversation.GetMessages() {
+		conversation = append(conversation, ConversationLogPlayerName{
+			Player:    msg.Player.Name,
+			Message:   msg.Message,
+			Role:      msg.Role,
+			Reasoning: msg.Reasoning,
+		})
+	}
+	game_log := GameLog{
+		Timestamp:    t,
+		Players:      players,
+		Conversation: conversation,
+		Cycles:       gs.cycle,
+		Status:       gs.EndgameStatus(),
+	}
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(game_log)
 }

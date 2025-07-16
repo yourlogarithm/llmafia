@@ -22,7 +22,9 @@ func (gs *GameState) nightDoctorSave() error {
 	}
 
 	var rowMessage string
-	if gs.lastSaved != "" {
+	if gs.lastSaved == doctor.Name {
+		rowMessage = " Remember that you cannot save yourself two times in a row."
+	} else if gs.lastSaved != "" {
 		rowMessage = fmt.Sprintf(" Remember that you cannot save %s two times in a row.", gs.lastSaved)
 	}
 
@@ -41,6 +43,21 @@ func (gs *GameState) nightDoctorSave() error {
 	response.Content = strings.Trim(response.Content, " \n")
 	if response.Content == "" {
 		return fmt.Errorf("empty response received for doctor save")
+	}
+
+	if gs.lastSaved != "" && response.Content == gs.lastSaved {
+		var message string
+		if gs.lastSaved == doctor.Name {
+			message = "You cannot save yourself again tonight."
+		} else {
+			message = fmt.Sprintf("You cannot save %s again tonight.", gs.lastSaved)
+		}
+		gs.Conversation.AddMessagePlaintext(
+			game.NARRATOR,
+			message+" Because you forgot that - no one will be saved tonight.",
+		)
+		gs.lastSaved = ""
+		return nil
 	}
 
 	gs.Conversation.AddMessage(

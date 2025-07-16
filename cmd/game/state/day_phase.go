@@ -7,6 +7,7 @@ import (
 )
 
 func rotatePlayers(s []game.Player, i int) []game.Player {
+	i %= len(s)
 	n := len(s)
 	if n == 0 {
 		return s
@@ -18,7 +19,7 @@ func rotatePlayers(s []game.Player, i int) []game.Player {
 func (gs *GameState) DayPhase(firstDay bool) error {
 	var message string
 
-	rotatePlayers(gs.players, gs.Cycle)
+	gs.players = rotatePlayers(gs.players, gs.cycle)
 
 	var playerOrder []string
 	for _, player := range gs.players {
@@ -48,9 +49,13 @@ func (gs *GameState) DayPhase(firstDay bool) error {
 			"No player has been accused of being a Mafia member, so the day ends without any elimination voting.",
 		)
 	} else {
+		var accusedNames []string
+		for accusedName := range gs.accusedPlayers {
+			accusedNames = append(accusedNames, accusedName)
+		}
 		gs.Conversation.AddMessagePlaintext(
 			game.NARRATOR,
-			"Accusations have been made. It's time to vote: each player may vote to eliminate one accused person or abstain. If any accused receives more than 50% of the votes, they will be eliminated. Otherwise, no one will be eliminated this day.",
+			fmt.Sprintf("Players: %s - have been accused. It's time to vote, each player may vote to eliminate one accused person or abstain. If any accused receives more than 50%% of the votes, they will be eliminated. Otherwise, no one will be eliminated this day.", strings.Join(accusedNames, ", ")),
 		)
 		if err := gs.dayVoting(); err != nil {
 			return fmt.Errorf("failed to proceed with day voting: %w", err)
